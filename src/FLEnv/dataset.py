@@ -53,6 +53,9 @@ class X_Ray_Dataset(Dataset):
     
     def get_indices(self):
         return self.indices_normal, self.indices_pneumonia
+    
+    def calculate_mean_std(self):
+        pass
 
 def get_data():
     """Get Train and Test Dataset and apply minimal transformation"""
@@ -96,10 +99,10 @@ def prepare_dataset(num_partitions: int, batch_size: int, train_ratio: float = 0
         pneumonia_per_client_valid = pneumonia_per_client[int(len(pneumonia_per_client) * train_ratio): ]
 
         dataset_train = X_Ray_Dataset(normal_per_client_train, pneumonia_per_client_train, transform=tr)
-        train_sampler = OverSampler(dataset_train.get_indices())
+        #train_sampler = OverSampler(dataset_train.get_indices())
         #train_sampler.print_length_of_indices()
         dataset_valid = X_Ray_Dataset(normal_per_client_valid, pneumonia_per_client_valid, transform=tr)
-        client_train_loaders.append(DataLoader(dataset_train, batch_size=batch_size, shuffle=False, sampler=train_sampler))
+        client_train_loaders.append(DataLoader(dataset_train, batch_size=batch_size, shuffle=True))
         client_valid_loaders.append(DataLoader(dataset_valid, batch_size=batch_size, num_workers=2))
         
 
