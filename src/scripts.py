@@ -102,16 +102,39 @@ def normalize():
 
 
 def calculate_mean_std():
-    normal_images = os.listdir(os.path.join(data_path, 'NORMAL'))
-    normal_images = [os.path.join(data_path, 'NORMAL', file) for file in normal_images]
+    normal_images = os.listdir(os.path.join(data_path, 'train', 'NORMAL'))
+    normal_images = [os.path.join(data_path, 'train' ,'NORMAL', file) for file in normal_images]
 
-    pneumonia_images = os.listdir(os.path.join(data_path, 'PNEUMONIA'))
-    pneumonia_images = [os.path.join(data_path, 'PNEUMONIA', file) for file in pneumonia_images]
+    pneumonia_images = os.listdir(os.path.join(data_path, 'train', 'PNEUMONIA'))
+    pneumonia_images = [os.path.join(data_path, 'train', 'PNEUMONIA', file) for file in pneumonia_images]
 
     normal_images.extend(pneumonia_images)
 
-    for img_path in normal_images:
-        img = np.asarray(Image.open(img_path).convert('L'))
+    print('computing mean')
+    mean = 0
+    for img_path in tqdm(normal_images):
+        img = cv.imread(img_path, cv.IMREAD_GRAYSCALE)
+        if img is not None:
+            img = img.astype(float) / 255.
+            mean += img.mean()
+
+    mean = mean / len(normal_images)
+
+    print('computing std')
+    std = 0
+    for img_path in tqdm(normal_images):
+        img = cv.imread(img_path, cv.IMREAD_GRAYSCALE)
+        if img is not None:
+            img = img.astype(float) / 255.
+            std += ((img - mean)**2).sum() / (img.shape[0] * img.shape[1])
+
+    std = np.sqrt(std / len(normal_images))
+    print(f'Mean: {mean}')
+    print(f'std: {std}')
+
+    #out
+    #Mean: 0.4880792792941513
+    #Std: 0.23403704091782646
 
 def download_dataset():
     import kagglehub
@@ -148,6 +171,6 @@ def create_train_test_split():
 #download_dataset()
 #create_train_test_split()
 #change_image_names()
-create_synthetic_images()
-#calculate_mean_std()
+#create_synthetic_images()
+calculate_mean_std()
 
