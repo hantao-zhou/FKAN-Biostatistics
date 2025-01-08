@@ -4,8 +4,8 @@ from typing import Dict, Tuple
 import flwr as fl
 import torch
 from flwr.common import NDArrays, Scalar
-
-from model import Dummy_Model, test, train
+import numpy as np
+from model import Dummy_Model, test, train, ConvNeXtKAN_v1
 
 '''This code is directly copied from the flower tutorial, see https://github.com/adap/flower/blob/main/examples/flower-simulation-step-by-step-pytorch/Part-I/client.py'''
 
@@ -20,7 +20,7 @@ class FlowerClient(fl.client.NumPyClient):
         self.valloader = valloader
 
         # a model that is randomly initialised at first
-        self.model = Dummy_Model(num_classes)
+        self.model = ConvNeXtKAN_v1()
 
         # figure out if this client has access to GPU support or not
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -29,7 +29,7 @@ class FlowerClient(fl.client.NumPyClient):
         """Receive parameters and apply them to the local model."""
         params_dict = zip(self.model.state_dict().keys(), parameters)
 
-        state_dict = OrderedDict({k: torch.Tensor(v) for k, v in params_dict})
+        state_dict = state_dict = OrderedDict({k: torch.from_numpy(np.copy(v)) for k, v in params_dict})
 
         self.model.load_state_dict(state_dict, strict=True)
 
@@ -55,11 +55,11 @@ class FlowerClient(fl.client.NumPyClient):
         # you can control these by customising what you pass to `on_fit_config_fn` when
         # defining your strategy.
         lr = config["lr"]
-        momentum = config["momentum"]
+        weight_decay = config["weight_decay"]
         epochs = config["local_epochs"]
 
         # a very standard looking optimiser
-        optim = torch.optim.SGD(self.model.parameters(), lr=lr, momentum=momentum)
+        optim = torch.optim.Adam(self.model.parameters(), lr=lr, weight_decay=weight_decay)
 
         # do local training. This function is identical to what you might
         # have used before in non-FL projects. For more advance FL implementation

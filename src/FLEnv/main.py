@@ -1,18 +1,30 @@
 
 import pickle
 from pathlib import Path
-import torch
+import importlib
 import flwr as fl
 import hydra
+import torch
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf
-
+import logging
 from client import generate_client_fn
 from dataset import prepare_dataset
 from server import get_evaluate_fn, get_on_fit_config
-from model import Dummy_Model, train, test
+from model import Dummy_Model, train, test, ConvNeXtKAN_v1
 from torch.optim import SGD, Adam
 
+
+def string_to_class(module_name, class_name):
+    try:
+        module = importlib.import_module(module_name)
+        try:
+            class_ = getattr(module, class_name)
+        except AttributeError:
+            logging.error('Class does not exist')
+    except ImportError:
+        logging.error('Module does not exist')
+    return class_ or None
 
 '''This code is directly copied from the flower tutorial, see https://github.com/adap/flower/blob/main/examples/flower-simulation-step-by-step-pytorch/Part-I/main.py'''
 
@@ -48,17 +60,18 @@ def main(cfg: DictConfig):
     client_train_loaders, client_validation_loaders, global_valid_loader, global_test_loader = prepare_dataset(
         cfg.num_clients, cfg.batch_size
     )
-
-    #net = Dummy_Model(1)
-    #client_train = client_train_loaders[0]
-    #client_valid = client_validation_loaders[0]
-    #epochs = 1
-    #device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    #optimizer = Adam(net.parameters(), lr=0.001)
-    #train(net, client_train, optimizer, epochs, device)
-    #test(net, client_valid, device)
-    #exit()
-
+    """ 
+    net = ConvNeXtKAN_v1()
+    client_train = client_train_loaders[0]
+    client_valid = client_validation_loaders[0]
+    epochs = 3
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    optimizer = Adam(net.parameters(), lr=0.0001, weight_decay=1e-5)
+    train(net, client_train, optimizer, epochs, device)
+    loss, accuracy, f1, precision, recall = test(net, client_valid, device)
+    print(f'Validation Loss: {loss}, accuracy: {accuracy}, f1: {f1}, precision: {precision}, recall: {recall}')
+    exit() """
+    
     ## 3. Define your clients
     # Unlike in standard FL (e.g. see the quickstart-pytorch or quickstart-tensorflow examples in the Flower repo),
     # in simulation we don't want to manually launch clients. We delegate that to the VirtualClientEngine.
@@ -80,7 +93,9 @@ def main(cfg: DictConfig):
     #         clients_to_do_fit = max(num_clients, self.min_fit_clients)
     # ```
     
-    strategy = fl.server.strategy.FedAvg(
+
+    strategy_type = string_to_class(cfg.strategy_config.module_name, cfg.strategy_config.class_name)
+    strategy = strategy_type(
         fraction_fit=0.5,  # in simulation, since all clients are available at all times, we can just use `min_fit_clients` to control exactly how many clients we want to involve during fit
         min_fit_clients=cfg.num_clients_per_round_fit,  # number of clients to sample for fit()
         fraction_evaluate=0.5,  # similar to fraction_fit, we don't need to use this argument.

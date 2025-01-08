@@ -4,8 +4,8 @@ from collections import OrderedDict
 import torch
 from omegaconf import DictConfig
 
-from model import Dummy_Model, test
-
+from model import Dummy_Model, test, ConvNeXtKAN_v1
+import numpy as np
 
 '''This code is directly copied from the flower tutorial, see https://github.com/adap/flower/blob/main/examples/flower-simulation-step-by-step-pytorch/Part-I/server.py'''
 
@@ -41,22 +41,22 @@ def get_evaluate_fn(num_classes: int, testloader):
         # this function takes these parameters and evaluates the global model
         # on a evaluation / test dataset.
 
-        model = Dummy_Model(num_classes)
+        model = ConvNeXtKAN_v1()
 
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         params_dict = zip(model.state_dict().keys(), parameters)
-        state_dict = OrderedDict({k: torch.Tensor(v) for k, v in params_dict})
+        state_dict = OrderedDict({k: torch.from_numpy(np.copy(v)) for k, v in params_dict})
         model.load_state_dict(state_dict, strict=True)
 
         # Here we evaluate the global model on the test set. Recall that in more
         # realistic settings you'd only do this at the end of your FL experiment
         # you can use the `server_round` input argument to determine if this is the
         # last round. If it's not, then preferably use a global validation set.
-        loss, accuracy = test(model, testloader, device)
+        loss, accuracy, f1, precision, recall = test(model, testloader, device)
 
         # Report the loss and any other metric (inside a dictionary). In this case
         # we report the global test accuracy.
-        return loss, {"accuracy": accuracy}
+        return loss, {"accuracy": accuracy, "f1": f1, "precision": precision, "recall": recall}
 
     return evaluate_fn
