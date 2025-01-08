@@ -3,13 +3,13 @@ from torch.utils.data import DataLoader, Dataset, Sampler
 from torchvision.transforms import Compose, Normalize, ToTensor, Resize
 import torch
 import numpy as np
-from PIL import Image
 import re
-from tqdm import tqdm
+import cv2 as cv
+
 
 
 data_dir = os.path.join(os.getcwd(), 'data', 'chest_xray')
-print(data_dir)
+#print(data_dir)
 p = re.compile(r'\d+')
 
 class OverSampler(Sampler):
@@ -47,15 +47,16 @@ class X_Ray_Dataset(Dataset):
         return len(self.data)                         
                                                       
     def __getitem__(self, index):
-        img = self.transform(Image.open(self.data[index]).convert('L'))
+        img = cv.imread(self.data[index], cv.IMREAD_GRAYSCALE)
+        img = img / 255.
+        img = self.transform(img)
         label = 0. if 'NORMAL' in self.data[index] else 1.
-        return img, torch.tensor(label)
+        return img.float(), torch.tensor(label)
     
     def get_indices(self):
         return self.indices_normal, self.indices_pneumonia
     
-    def calculate_mean_std(self):
-        pass
+
 
 def get_data():
     """Get Train and Test Dataset and apply minimal transformation"""
@@ -99,11 +100,9 @@ def prepare_dataset(num_partitions: int, batch_size: int, train_ratio: float = 0
         pneumonia_per_client_valid = pneumonia_per_client[int(len(pneumonia_per_client) * train_ratio): ]
 
         dataset_train = X_Ray_Dataset(normal_per_client_train, pneumonia_per_client_train, transform=tr)
-        #train_sampler = OverSampler(dataset_train.get_indices())
-        #train_sampler.print_length_of_indices()
         dataset_valid = X_Ray_Dataset(normal_per_client_valid, pneumonia_per_client_valid, transform=tr)
-        client_train_loaders.append(DataLoader(dataset_train, batch_size=batch_size, shuffle=True))
-        client_valid_loaders.append(DataLoader(dataset_valid, batch_size=batch_size, num_workers=2))
+        client_train_loaders.append(DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=2))
+        client_valid_loaders.append(DataLoader(dataset_valid, batch_size=batch_size, shuffle=True, num_workers=2))
         
 
 
