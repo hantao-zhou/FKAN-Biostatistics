@@ -26,3 +26,4 @@ data/
 # Other IDE settings
 .idea/
 .vscode/
+src/best_model.pth
