@@ -26,3 +26,5 @@ data/
 # Other IDE settings
 .idea/
 .vscode/
+outputs
+resnet-xray-pneumonia-classification-newdata

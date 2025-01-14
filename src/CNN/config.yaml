@@ -1,0 +1,22 @@
+data_dir: "../../data/chest_xray"
+model_id: "microsoft/resnet-50"
+output_dir: "resnet-xray-pneumonia-classification-newdata"
+shuffle: false
+train_test_split: 0.2
+training_args:
+  eval_strategy: "epoch"
+  save_strategy: "epoch"
+  logging_strategy: "epoch"
+  learning_rate: !!float 5e-5
+  per_device_train_batch_size: 16
+  gradient_accumulation_steps: 4
+  per_device_eval_batch_size: 16
+  num_train_epochs: 100
+  save_total_limit: 2
+  warmup_ratio: 0.1
+  load_best_model_at_end: true
+  metric_for_best_model: "eval_loss"
+  greater_is_better: false
+  fp16: true
+  report_to: "tensorboard"
+early_stopping_patience: 20
