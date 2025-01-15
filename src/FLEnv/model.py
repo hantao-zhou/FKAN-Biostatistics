@@ -99,7 +99,7 @@ class KANLinear_v1(nn.Module):
 
 # ConvNeXtKAN_v1 Model
 class ConvNeXtKAN_v1(nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes=2):
         super(ConvNeXtKAN_v1, self).__init__()
         # Base model
         self.conv_layers = nn.Sequential(
@@ -130,13 +130,15 @@ class ConvNeXtKAN_v1(nn.Module):
 
         # KAN layers
         self.kan1 = KANLinear_v1(256, 512)
-        self.kan2 = KANLinear_v1(512, 1)  # 2 classes (suitable for binary classification)
+        self.kan2 = KANLinear_v1(512, num_classes)  # 2 classes (suitable for binary classification)
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         x = self.conv_layers(x)  # Pass through convolutions
         x = self.flatten(x)  # Flatten the output
         x = self.kan1(x)  # Pass through the first KAN layer
         x = self.kan2(x)  # Pass through the second KAN layer
+        x = self.softmax(x)
         return x
     
 
@@ -145,14 +147,13 @@ def train(net, trainloader, optimizer, epochs, device: str):
 
     This is a fairly simple training loop for PyTorch.
     """
-    criterion = torch.nn.BCEWithLogitsLoss()
+    criterion = torch.nn.CrossEntropyLoss()
     net.train()
     net.to(device)
    
     for _ in range(epochs):
         p_loss = 0
-        pbar = tqdm(trainloader)
-        for i, (images, labels) in enumerate(pbar):
+        for i, (images, labels) in enumerate(trainloader):
             images, labels = images.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = net(images)
@@ -160,7 +161,8 @@ def train(net, trainloader, optimizer, epochs, device: str):
             loss.backward()
             optimizer.step()
             p_loss += loss.item()
-            #pbar.set_description(f'Loss: {p_loss / (i + 1)}')
+            #pbar.set_description(f'Loss: {(p_loss / (i + 1)):.4f}')
+            
             
 
             
@@ -172,7 +174,7 @@ def test(net, testloader, device: str):
 
     and report loss and accuracy.
     """
-    criterion = torch.nn.BCEWithLogitsLoss()
+    criterion = torch.nn.CrossEntropyLoss()
     recall_score_metric = torchmetrics.Recall(task='binary')
     precision_score_metric = torchmetrics.Precision(task='binary')
     correct, loss = 0, 0.0
@@ -184,20 +186,21 @@ def test(net, testloader, device: str):
         for images, label in testloader:
             images, label = images.to(device), label.to(device)
             logits = net(images)
-            logits = F.sigmoid(torch.squeeze(logits))
+            _, prediction = torch.max(logits, dim=1)
             loss += criterion(logits, label).item()
-            prediction = torch.round(logits)
             predictions.extend(prediction)
             labels.extend(label)
             
-    predictions = torch.Tensor(predictions)
-    labels = torch.Tensor(labels)
-    accuracy = torch.sum(predictions == labels) / len(testloader)
+    predictions = torch.tensor(predictions, dtype=torch.float32)
+    labels = torch.tensor(labels, dtype=torch.long)
+    accuracy = torch.sum(predictions == labels) / len(testloader.dataset)
     recall = recall_score_metric(predictions, labels)
     precision = precision_score_metric(predictions, labels)
-    f1 = 2 * ((precision *recall)/(precision + recall))
+    f1 = 2 * ((precision * recall)/(precision + recall + 1e-10))
     loss = loss / len(testloader)
     # add sklearn classification report
-    from sklearn.metrics import classification_report
-    print(classification_report(labels.cpu().numpy(), predictions.cpu().numpy()))
-    return loss, accuracy, f1, precision, recall
+    #from sklearn.metrics import classification_report
+    #print(classification_report(labels.cpu().numpy(), predictions.cpu().numpy()))
+    return loss, accuracy.item(), f1.item(), precision.item(), recall.item()
+
+
