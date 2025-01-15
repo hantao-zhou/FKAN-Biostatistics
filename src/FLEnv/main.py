@@ -13,6 +13,8 @@ from dataset import prepare_dataset
 from server import get_evaluate_fn, get_on_fit_config, weighted_average
 from model import Dummy_Model, train, test, ConvNeXtKAN_v1
 from torch.optim import SGD, Adam
+import numpy as np
+import random
 
 
 def string_to_class(module_name, class_name):
@@ -33,6 +35,10 @@ def string_to_class(module_name, class_name):
 def main(cfg: DictConfig):
     ## 1. Parse config & get experiment output dir
     print(OmegaConf.to_yaml(cfg))
+    np.random.seed(cfg.seed)
+    torch.random.seed(cfg.seed)
+    torch.manual_seed(cfg.seed)
+    random.seed(cfg.seed)
     # Hydra automatically creates a directory for your experiments
     # by default it would be in <this directory>/outputs/<date>/<time>
     # you can retrieve the path to it as shown below. We'll use this path to
