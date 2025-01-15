@@ -70,7 +70,9 @@ def main(cfg: DictConfig):
     train(net, client_train, optimizer, epochs, device)
     loss, accuracy, f1, precision, recall = test(net, client_valid, device)
     print(f'Validation Loss: {loss}, accuracy: {accuracy}, f1: {f1}, precision: {precision}, recall: {recall}')
-    exit() 
+    # exit() 
+    client_test = global_test_loader
+    loss, accuracy, f1, precision, recall = test(net, client_test, device)
     
     ## 3. Define your clients
     # Unlike in standard FL (e.g. see the quickstart-pytorch or quickstart-tensorflow examples in the Flower repo),
@@ -117,8 +119,8 @@ def main(cfg: DictConfig):
         ),  # minimal config for the server loop telling the number of rounds in FL
         strategy=strategy,  # our strategy of choice
         client_resources={
-            "num_cpus": 2,
-            "num_gpus": 0.0,
+            "num_cpus": 1,
+            "num_gpus": 0.3,
         },  # (optional) controls the degree of parallelism of your simulation.
         # Lower resources per client allow for more clients to run concurrently
         # (but need to be set taking into account the compute/memory footprint of your run)

@@ -197,4 +197,7 @@ def test(net, testloader, device: str):
     precision = precision_score_metric(predictions, labels)
     f1 = 2 * ((precision *recall)/(precision + recall))
     loss = loss / len(testloader)
+    # add sklearn classification report
+    from sklearn.metrics import classification_report
+    print(classification_report(labels.cpu().numpy(), predictions.cpu().numpy()))
     return loss, accuracy, f1, precision, recall
