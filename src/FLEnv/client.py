@@ -20,7 +20,7 @@ class FlowerClient(fl.client.NumPyClient):
         self.valloader = valloader
 
         # a model that is randomly initialised at first
-        self.model = ConvNeXtKAN_v1()
+        self.model = ConvNeXtKAN_v1(num_classes=num_classes)
 
         # figure out if this client has access to GPU support or not
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -76,10 +76,10 @@ class FlowerClient(fl.client.NumPyClient):
 
     def evaluate(self, parameters: NDArrays, config: Dict[str, Scalar]):
         self.set_parameters(parameters)
-
         loss, accuracy, f1, precision, recall = test(self.model, self.valloader, self.device)
 
         return float(loss), len(self.valloader), {"accuracy": accuracy, "f1": f1, "precision": precision, "recall": recall}
+
 
 
 def generate_client_fn(trainloaders, valloaders, num_classes):

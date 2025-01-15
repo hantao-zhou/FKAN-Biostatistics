@@ -8,7 +8,7 @@ import cv2 as cv
 
 
 
-data_dir = os.path.join(os.getcwd(), 'data', 'chest_xray')
+data_dir = os.path.join(os.getcwd(), 'normData')
 #print(data_dir)
 p = re.compile(r'\d+')
 
@@ -50,7 +50,7 @@ class X_Ray_Dataset(Dataset):
         img = cv.imread(self.data[index], cv.IMREAD_GRAYSCALE)
         img = img / 255.
         img = self.transform(img)
-        label = 0. if 'NORMAL' in self.data[index] else 1.
+        label = 0 if 'NORMAL' in self.data[index] else 1
         return img.float(), torch.tensor(label)
     
     def get_indices(self):
