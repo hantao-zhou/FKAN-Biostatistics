@@ -61,18 +61,18 @@ def main(cfg: DictConfig):
         cfg.num_clients, cfg.batch_size
     )
     
-    net = ConvNeXtKAN_v1()
-    client_train = client_train_loaders[0]
-    client_valid = client_validation_loaders[0]
-    epochs = 3
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    optimizer = Adam(net.parameters(), lr=0.0001, weight_decay=1e-5)
-    train(net, client_train, optimizer, epochs, device)
-    loss, accuracy, f1, precision, recall = test(net, client_valid, device)
-    print(f'Validation Loss: {loss}, accuracy: {accuracy}, f1: {f1}, precision: {precision}, recall: {recall}')
+    # net = ConvNeXtKAN_v1()
+    # client_train = client_train_loaders[0]
+    # client_valid = client_validation_loaders[0]
+    # epochs = 3
+    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # optimizer = Adam(net.parameters(), lr=0.0001, weight_decay=1e-5)
+    # train(net, client_train, optimizer, epochs, device)
+    # loss, accuracy, f1, precision, recall = test(net, client_valid, device)
+    # print(f'Validation Loss: {loss}, accuracy: {accuracy}, f1: {f1}, precision: {precision}, recall: {recall}')
     # exit() 
-    client_test = global_test_loader
-    loss, accuracy, f1, precision, recall = test(net, client_test, device)
+    # client_test = global_test_loader
+    # loss, accuracy, f1, precision, recall = test(net, client_test, device)
     
     ## 3. Define your clients
     # Unlike in standard FL (e.g. see the quickstart-pytorch or quickstart-tensorflow examples in the Flower repo),

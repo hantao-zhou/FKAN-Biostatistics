@@ -8,7 +8,7 @@ import cv2 as cv
 
 
 
-data_dir = os.path.join(os.getcwd(), 'data', 'chest_xray')
+data_dir = os.path.join(os.getcwd(), 'normData', )
 #print(data_dir)
 p = re.compile(r'\d+')
 

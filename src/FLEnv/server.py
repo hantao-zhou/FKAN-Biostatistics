@@ -24,7 +24,7 @@ def get_on_fit_config(config: DictConfig):
 
         return {
             "lr": config.lr,
-            "momentum": config.momentum,
+            "weight_decay": config.weight_decay,
             "local_epochs": config.local_epochs,
         }
 
