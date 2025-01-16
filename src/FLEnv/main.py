@@ -31,7 +31,7 @@ def string_to_class(module_name, class_name):
 def main(cfg: DictConfig):
     # Initialize TensorBoard writer
     writer = SummaryWriter(log_dir="tensorboard_logs")  # Log directory for TensorBoard
-    
+
     # 1. Parse config & get experiment output dir
     print(OmegaConf.to_yaml(cfg))
     np.random.seed(cfg.seed)
@@ -45,14 +45,16 @@ def main(cfg: DictConfig):
     )
 
     # 3. Define your clients
-    client_fn = generate_client_fn(client_train_loaders, client_validation_loaders, cfg.num_classes)
+    client_fn = generate_client_fn(
+        client_train_loaders, client_validation_loaders, cfg.num_classes
+    )
 
     # 4. Define your strategy
     strategy_type = string_to_class(cfg.strategy_config.module_name, cfg.strategy_config.class_name)
     strategy = strategy_type(
-        fraction_fit=0.5,
+        # fraction_fit=cfg.strategy_config.fraction_fit,
         min_fit_clients=cfg.num_clients_per_round_fit,
-        fraction_evaluate=0.5,
+        # fraction_evaluate=cfg.strategy_config.fraction_evaluate,
         min_evaluate_clients=cfg.num_clients_per_round_eval,
         min_available_clients=cfg.num_clients,
         evaluate_metrics_aggregation_fn=weighted_average,
@@ -66,20 +68,30 @@ def main(cfg: DictConfig):
         num_clients=cfg.num_clients,
         config=fl.server.ServerConfig(num_rounds=cfg.num_rounds),
         strategy=strategy,
-        client_resources={"num_cpus": 8, "num_gpus": 0.5},
+        client_resources={"num_cpus": cfg.client_resources.num_cpus, "num_gpus": cfg.client_resources.num_gpus},
     )
 
     # Log simulation metrics to TensorBoard
-    for round_number, metrics in enumerate(history.metrics_centralized["loss"]):
-        writer.add_scalar("Centralized Loss", metrics, round_number)
-    for round_number, metrics in enumerate(history.metrics_centralized["accuracy"]):
-        writer.add_scalar("Centralized Accuracy", metrics, round_number)
+
+    for metric_name, metric_values in history.metrics_centralized.items():
+        for round_number, (round_index, metric_value) in enumerate(metric_values):
+            writer.add_scalar(f"Metrics/Centralized/{metric_name}", metric_value, round_index)
+
+    for metric_name, metric_values in history.metrics_distributed.items():
+        for round_number, (round_index, metric_value) in enumerate(metric_values):
+            writer.add_scalar(f"Metrics/Distributed/{metric_name}", metric_value, round_index)
 
     # Log final results
     writer.add_hparams(
-        {"num_rounds": cfg.num_rounds, "num_clients": cfg.num_clients, "strategy": cfg.strategy_config.class_name, "clients_per_round": cfg.num_clients_per_round_fit},
-        {"final_loss": history.metrics_centralized["loss"][-1],
-         "final_accuracy": history.metrics_centralized["accuracy"][-1]},
+        {
+            "num_rounds": cfg.num_rounds,
+            "num_clients": cfg.num_clients,
+            "batch_size": cfg.batch_size,
+            "num_classes": cfg.num_classes
+        },
+        {
+            "final_accuracy": history.metrics_centralized["Accuracy"][-1][1]
+        },
     )
 
     writer.close()  # Close the TensorBoard writer

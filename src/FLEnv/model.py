@@ -140,7 +140,7 @@ class ConvNeXtKAN_v1(nn.Module):
         x = self.kan2(x)  # Pass through the second KAN layer
         x = self.softmax(x)
         return x
-    
+
 
 def train(net, trainloader, optimizer, epochs, device: str):
     """Train the network on the training set.
