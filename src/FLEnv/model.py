@@ -127,7 +127,7 @@ class ConvNeXtKAN_v1(nn.Module):
         )
 
         self.flatten = nn.Flatten()
-
+        self.num_classes = num_classes
         # KAN layers
         self.kan1 = KANLinear_v1(256, 512)
         self.kan2 = KANLinear_v1(512, num_classes)  # 2 classes (suitable for binary classification)
@@ -187,6 +187,7 @@ def test(net, testloader, device: str):
             images, label = images.to(device), label.to(device)
             logits = net(images)
             _, prediction = torch.max(logits, dim=1)
+            # import ipdb; ipdb.set_trace()
             loss += criterion(logits, label).item()
             predictions.extend(prediction)
             labels.extend(label)
