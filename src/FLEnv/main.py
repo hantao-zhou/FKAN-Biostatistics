@@ -36,7 +36,7 @@ def main(cfg: DictConfig):
     ## 1. Parse config & get experiment output dir
     print(OmegaConf.to_yaml(cfg))
     np.random.seed(cfg.seed)
-    torch.random.seed(cfg.seed)
+    # torch.random.seed(cfg.seed)
     torch.manual_seed(cfg.seed)
     random.seed(cfg.seed)
     # Hydra automatically creates a directory for your experiments
