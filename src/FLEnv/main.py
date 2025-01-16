@@ -10,9 +10,11 @@ from omegaconf import DictConfig, OmegaConf
 import logging
 from client import generate_client_fn
 from dataset import prepare_dataset
-from server import get_evaluate_fn, get_on_fit_config
+from server import get_evaluate_fn, get_on_fit_config, weighted_average
 from model import Dummy_Model, train, test, ConvNeXtKAN_v1
 from torch.optim import SGD, Adam
+import numpy as np
+import random
 
 
 def string_to_class(module_name, class_name):
@@ -33,6 +35,10 @@ def string_to_class(module_name, class_name):
 def main(cfg: DictConfig):
     ## 1. Parse config & get experiment output dir
     print(OmegaConf.to_yaml(cfg))
+    np.random.seed(cfg.seed)
+    torch.random.seed(cfg.seed)
+    torch.manual_seed(cfg.seed)
+    random.seed(cfg.seed)
     # Hydra automatically creates a directory for your experiments
     # by default it would be in <this directory>/outputs/<date>/<time>
     # you can retrieve the path to it as shown below. We'll use this path to
@@ -61,19 +67,17 @@ def main(cfg: DictConfig):
         cfg.num_clients, cfg.batch_size
     )
     
-    # net = ConvNeXtKAN_v1()
-    # client_train = client_train_loaders[0]
-    # client_valid = client_validation_loaders[0]
-    # epochs = 3
-    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # optimizer = Adam(net.parameters(), lr=0.0001, weight_decay=1e-5)
-    # train(net, client_train, optimizer, epochs, device)
-    # loss, accuracy, f1, precision, recall = test(net, client_valid, device)
-    # print(f'Validation Loss: {loss}, accuracy: {accuracy}, f1: {f1}, precision: {precision}, recall: {recall}')
-    # exit() 
-    # client_test = global_test_loader
-    # loss, accuracy, f1, precision, recall = test(net, client_test, device)
-    
+    '''net = ConvNeXtKAN_v1()
+    client_train = client_train_loaders[0]
+    client_valid = client_validation_loaders[0]
+    epochs = 3
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    optimizer = Adam(net.parameters(), lr=0.0001, weight_decay=1e-5)
+    train(net, client_train, optimizer, 3, device)
+    loss, accuracy, f1, precision, recall = test(net, client_valid, device)
+    print(f'Validation Loss: {loss}, accuracy: {accuracy}, f1: {f1}, precision: {precision}, recall: {recall}')
+    exit() 
+    '''
     ## 3. Define your clients
     # Unlike in standard FL (e.g. see the quickstart-pytorch or quickstart-tensorflow examples in the Flower repo),
     # in simulation we don't want to manually launch clients. We delegate that to the VirtualClientEngine.
@@ -103,6 +107,7 @@ def main(cfg: DictConfig):
         fraction_evaluate=0.5,  # similar to fraction_fit, we don't need to use this argument.
         min_evaluate_clients=cfg.num_clients_per_round_eval,  # number of clients to sample for evaluate()
         min_available_clients=cfg.num_clients,  # total clients in the simulation
+        evaluate_metrics_aggregation_fn=weighted_average,
         on_fit_config_fn=get_on_fit_config(
             cfg.config_fit
         ),  # a function to execute to obtain the configuration to send to the clients during fit()
@@ -119,14 +124,15 @@ def main(cfg: DictConfig):
         ),  # minimal config for the server loop telling the number of rounds in FL
         strategy=strategy,  # our strategy of choice
         client_resources={
-            "num_cpus": 1,
-            "num_gpus": 0.3,
+            "num_cpus": 8,
+            "num_gpus": 0,
         },  # (optional) controls the degree of parallelism of your simulation.
         # Lower resources per client allow for more clients to run concurrently
         # (but need to be set taking into account the compute/memory footprint of your run)
         # `num_cpus` is an absolute number (integer) indicating the number of threads a client should be allocated
         # `num_gpus` is a ratio indicating the portion of gpu memory that a client needs.
     )
+    #print(history)
 
     # ^ Following the above comment about `client_resources`. if you set `num_gpus` to 0.5 and you have one GPU in your system,
     # then your simulation would run 2 clients concurrently. If in your round you have more than 2 clients, then clients will wait

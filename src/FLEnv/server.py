@@ -6,6 +6,8 @@ from omegaconf import DictConfig
 
 from model import Dummy_Model, test, ConvNeXtKAN_v1
 import numpy as np
+from flwr.common import Metrics
+from typing import List, Tuple
 
 '''This code is directly copied from the flower tutorial, see https://github.com/adap/flower/blob/main/examples/flower-simulation-step-by-step-pytorch/Part-I/server.py'''
 
@@ -41,7 +43,7 @@ def get_evaluate_fn(num_classes: int, testloader):
         # this function takes these parameters and evaluates the global model
         # on a evaluation / test dataset.
 
-        model = ConvNeXtKAN_v1()
+        model = ConvNeXtKAN_v1(num_classes=num_classes)
 
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -57,6 +59,25 @@ def get_evaluate_fn(num_classes: int, testloader):
 
         # Report the loss and any other metric (inside a dictionary). In this case
         # we report the global test accuracy.
-        return loss, {"accuracy": accuracy, "f1": f1, "precision": precision, "recall": recall}
+        return loss, {"Accuracy": round(accuracy, 3), "F1": round(f1, 3), "Precision": round(precision, 3), "Recall": round(recall, 3)}
 
     return evaluate_fn
+
+
+# Define metric aggregation function
+def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Metrics:
+    # Multiply accuracy of each client by number of examples used
+    examples = round(sum([num_examples for num_examples, _ in metrics]), 3)
+    accuracie = round(sum([num_examples * m["accuracy"] for num_examples, m in metrics]) / examples, 3)
+    recall = round(sum([num_examples * m["recall"] for num_examples, m in metrics]) / examples, 3)
+    precision = round(sum([num_examples * m["precision"] for num_examples, m in metrics]) / examples, 3)
+    f1 = round(sum([num_examples * m["f1"] for num_examples, m in metrics]) / examples, 3)
+    
+
+    print(f'----------')
+    print(f'averaged metrics for all clients:')
+    print(f'Accuracy: {accuracie}, F1: {f1}, Precision: {precision}, Recall: {recall}')
+    print(f'----------')
+
+    # Aggregate and return custom metric (weighted average)
+    return {"Accuracy": accuracie, "Recall": recall, "Precision": precision, "F1": f1}
