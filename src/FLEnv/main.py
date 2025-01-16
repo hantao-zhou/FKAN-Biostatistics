@@ -77,7 +77,7 @@ def main(cfg: DictConfig):
 
     # Log final results
     writer.add_hparams(
-        {"num_rounds": cfg.num_rounds, "num_clients": cfg.num_clients},
+        {"num_rounds": cfg.num_rounds, "num_clients": cfg.num_clients, "strategy": cfg.strategy_config.class_name, "clients_per_round": cfg.num_clients_per_round_fit},
         {"final_loss": history.metrics_centralized["loss"][-1],
          "final_accuracy": history.metrics_centralized["accuracy"][-1]},
     )
