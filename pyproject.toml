@@ -8,6 +8,12 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.11"
 tensorflow = "2.16.2"
+hydra-core = "1.3.2"
+flwr = {version = ">=1.0,<2.0", extras = ["simulation"]}
+torch = "^2.5.1"
+torchvision = "^0.20.1"
+opencv-python = "4.10.0.84"
+tqdm = "^4.67.1"
 
 
 [build-system]
