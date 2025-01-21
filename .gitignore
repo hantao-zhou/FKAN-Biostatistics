@@ -6,7 +6,8 @@ __pycache__/
 #
 outputs/
 data/
-
+src/FLEnv/model_dicts
+src/CNN/model_dicts
 
 # Virtual environments
 .env/

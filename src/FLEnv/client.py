@@ -27,6 +27,9 @@ class FlowerClient(fl.client.NumPyClient):
             self.model = EFF_KAN([224 * 224, 224, 128, num_classes])
         else: self.model = ResNet(num_classes=num_classes, softmax=False)
 
+        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=config.config_fit.lr, weight_decay=config.config_fit.weight_decay)
+        self.scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=self.optimizer, gamma=0.8)
+
         # figure out if this client has access to GPU support or not
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -64,14 +67,14 @@ class FlowerClient(fl.client.NumPyClient):
         epochs = config["local_epochs"]
 
         # a very standard looking optimiser
-        optim = torch.optim.Adam(self.model.parameters(), lr=lr, weight_decay=weight_decay)
-
+        
         # do local training. This function is identical to what you might
         # have used before in non-FL projects. For more advance FL implementation
         # you might want to tweak it but overall, from a client perspective the "local
         # training" can be seen as a form of "centralised training" given a pre-trained
         # model (i.e. the model received from the server)
-        train(self.model, self.trainloader, optim, epochs, self.device)
+        train(self.model, self.trainloader, self.optimizer, epochs, self.device)
+        self.scheduler.step()
 
         # Flower clients need to return three arguments: the updated model, the number
         # of examples in the client (although this depends a bit on your choice of aggregation
