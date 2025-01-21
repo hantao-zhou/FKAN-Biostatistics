@@ -2,24 +2,22 @@
 ---
 # this is a very minimal config file in YAML format
 # it will be processed by Hydra at runtime
-# you might notice it doesn't have anything special that other YAML files don't have
-# check the followup tutorial on how to use Hydra in conjunction with Flower for a 
-# much more advanced usage of Hydra configs
+
 
 model_type: REAL_KAN #EFF_KAN, ResNet
 strategy_config:
   module_name: flwr.server.strategy
   class_name: FedAvg
 num_rounds: 10 # number of FL rounds in the experiment
-num_clients: 1 # number of total clients available (this is also the number of partitions we need to create)
+num_clients: 3 # number of total clients available (this is also the number of partitions we need to create)
 batch_size: 32 # batch size to use by clients during training
-num_classes: 2 # number of classes in our dataset (we use MNIST) -- this tells the model how to setup its output fully-connected layer
-num_clients_per_round_fit: 1 # number of clients to involve in each fit round (fit  round = clients receive the model from the server and do local training)
-num_clients_per_round_eval: 1 # number of clients to involve in each evaluate round (evaluate round = client only evaluate the model sent by the server on their local dataset without training it)
+num_classes: 2 # number of classes in our dataset (we use Chest-XRAY) -- this tells the model how to setup its output fully-connected layer / KAN output layer
+num_clients_per_round_fit: 3 # number of clients to involve in each fit round (fit  round = clients receive the model from the server and do local training)
+num_clients_per_round_eval: 3 # number of clients to involve in each evaluate round (evaluate round = client only evaluate the model sent by the server on their local dataset without training it)
 config_fit: # a config that each client will receive (this is send by the server) when they are sampled. This allows you to dynamically configure the training on the client side as the simulation progresses
   lr: 0.0001 # learning rate to use by the clients
-  weight_decay: 0.00001 # weight decay used by Adam optimiser on the client side
-  local_epochs: 1 # number of training epochs each clients does in a fit() round
+  weight_decay: 0.00001 # weight decay used by AdamW optimiser on the client side
+  local_epochs: 1 # number of training epochs each client does in a fit() round
   momentum: 0.0001
   best_f1: 0.0
 seed: 42
