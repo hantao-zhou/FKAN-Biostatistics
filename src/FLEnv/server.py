@@ -3,13 +3,15 @@ from collections import OrderedDict
 
 import torch
 from omegaconf import DictConfig
-
-from model import Dummy_Model, test, ConvNeXtKAN_v1
+import os
+from model import test, REAL_KAN, EFF_KAN, ResNet
 import numpy as np
 from flwr.common import Metrics
 from typing import List, Tuple
 
 '''This code is directly copied from the flower tutorial, see https://github.com/adap/flower/blob/main/examples/flower-simulation-step-by-step-pytorch/Part-I/server.py'''
+
+file = os.path.dirname(os.path.realpath(__file__))
 
 def get_on_fit_config(config: DictConfig):
     """Return function that prepares config to send to clients."""
@@ -33,7 +35,7 @@ def get_on_fit_config(config: DictConfig):
     return fit_config_fn
 
 
-def get_evaluate_fn(num_classes: int, testloader):
+def get_evaluate_fn(num_classes: int, testloader, server_config):
     """Define function for global evaluation on the server."""
 
     def evaluate_fn(server_round: int, parameters, config):
@@ -43,7 +45,13 @@ def get_evaluate_fn(num_classes: int, testloader):
         # this function takes these parameters and evaluates the global model
         # on a evaluation / test dataset.
 
-        model = ConvNeXtKAN_v1(num_classes=num_classes)
+        model = None
+        if server_config.model_type == 'REAL_KAN':
+            model = REAL_KAN([224 * 224, 224, 128, num_classes])
+        elif server_config.model_type == 'EFF_KAN':
+            model = EFF_KAN([224 * 224, 224, 128, num_classes])
+        else: model = ResNet(num_classes=num_classes, softmax=False)
+
 
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -55,11 +63,17 @@ def get_evaluate_fn(num_classes: int, testloader):
         # realistic settings you'd only do this at the end of your FL experiment
         # you can use the `server_round` input argument to determine if this is the
         # last round. If it's not, then preferably use a global validation set.
-        loss, accuracy, f1, precision, recall = test(model, testloader, device)
+        loss, f1, precision, recall = test(model, testloader, device)
 
+        if f1 > server_config.config_fit.best_f1:
+            print(f'----------')
+            print(f'Global model improved from {server_config.config_fit.best_f1} F1-Score to {f1} F1-Score')
+            print(f'----------')
+            server_config.config_fit.best_f1 = f1
+            torch.save(model.state_dict(),f'{file}/model_dicts/{server_config.model_type}.pth')
         # Report the loss and any other metric (inside a dictionary). In this case
         # we report the global test accuracy.
-        return loss, {"Accuracy": round(accuracy, 3), "F1": round(f1, 3), "Precision": round(precision, 3), "Recall": round(recall, 3)}
+        return loss, {"F1": f1, "Precision": precision, "Recall": recall}
 
     return evaluate_fn
 
@@ -67,17 +81,16 @@ def get_evaluate_fn(num_classes: int, testloader):
 # Define metric aggregation function
 def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Metrics:
     # Multiply accuracy of each client by number of examples used
-    examples = round(sum([num_examples for num_examples, _ in metrics]), 3)
-    accuracie = round(sum([num_examples * m["accuracy"] for num_examples, m in metrics]) / examples, 3)
-    recall = round(sum([num_examples * m["recall"] for num_examples, m in metrics]) / examples, 3)
-    precision = round(sum([num_examples * m["precision"] for num_examples, m in metrics]) / examples, 3)
-    f1 = round(sum([num_examples * m["f1"] for num_examples, m in metrics]) / examples, 3)
+    examples = sum([num_examples for num_examples, _ in metrics])
+    recall = round(sum([num_examples * m["Recall"] for num_examples, m in metrics]) / examples, 3)
+    precision = round(sum([num_examples * m["Precision"] for num_examples, m in metrics]) / examples, 3)
+    f1 = round(sum([num_examples * m["F1"] for num_examples, m in metrics]) / examples, 3)
     
 
     print(f'----------')
     print(f'averaged metrics for all clients:')
-    print(f'Accuracy: {accuracie}, F1: {f1}, Precision: {precision}, Recall: {recall}')
+    print(f'F1: {f1}, Precision: {precision}, Recall: {recall}')
     print(f'----------')
 
     # Aggregate and return custom metric (weighted average)
-    return {"Accuracy": accuracie, "Recall": recall, "Precision": precision, "F1": f1}
+    return {"Precision": precision, "F1": f1, "Recall": recall}

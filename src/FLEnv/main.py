@@ -1,4 +1,5 @@
-
+import warnings
+warnings.filterwarnings("ignore")
 import pickle
 from pathlib import Path
 import importlib
@@ -11,8 +12,6 @@ import logging
 from client import generate_client_fn
 from dataset import prepare_dataset
 from server import get_evaluate_fn, get_on_fit_config, weighted_average
-from model import Dummy_Model, train, test, ConvNeXtKAN_v1
-from torch.optim import SGD, Adam
 import numpy as np
 import random
 
@@ -83,7 +82,7 @@ def main(cfg: DictConfig):
     # in simulation we don't want to manually launch clients. We delegate that to the VirtualClientEngine.
     # What we need to provide to start_simulation() with is a function that can be called at any point in time to
     # create a client. This is what the line below exactly returns.
-    client_fn = generate_client_fn(client_train_loaders, client_validation_loaders, cfg.num_classes)
+    client_fn = generate_client_fn(client_train_loaders, client_validation_loaders, cfg.num_classes, cfg)
 
     ## 4. Define your strategy
     # A flower strategy orchestrates your FL pipeline. Although it is present in all stages of the FL process
@@ -111,7 +110,7 @@ def main(cfg: DictConfig):
         on_fit_config_fn=get_on_fit_config(
             cfg.config_fit
         ),  # a function to execute to obtain the configuration to send to the clients during fit()
-        evaluate_fn=get_evaluate_fn(cfg.num_classes, global_valid_loader),
+        evaluate_fn=get_evaluate_fn(cfg.num_classes, global_valid_loader, cfg),
     )  # a function to run on the server side to evaluate the global model.
 
     ## 5. Start Simulation
