@@ -5,14 +5,14 @@ import flwr as fl
 import torch
 from flwr.common import NDArrays, Scalar
 import numpy as np
-from model import Dummy_Model, test, train, ConvNeXtKAN_v1
+from model import test, train, REAL_KAN, EFF_KAN, ResNet
 
 '''This code is directly copied from the flower tutorial, see https://github.com/adap/flower/blob/main/examples/flower-simulation-step-by-step-pytorch/Part-I/client.py'''
 
 class FlowerClient(fl.client.NumPyClient):
     """Define a Flower Client."""
 
-    def __init__(self, trainloader, valloader, num_classes) -> None:
+    def __init__(self, trainloader, valloader, num_classes, config) -> None:
         super().__init__()
 
         # the dataloaders that point to the data associated to this client
@@ -20,7 +20,15 @@ class FlowerClient(fl.client.NumPyClient):
         self.valloader = valloader
 
         # a model that is randomly initialised at first
-        self.model = ConvNeXtKAN_v1(num_classes=num_classes)
+        self.model = None
+        if config.model_type == 'REAL_KAN':
+            self.model = REAL_KAN([224 * 224, 224, 128, num_classes])
+        elif config.model_type == 'EFF_KAN':
+            self.model = EFF_KAN([224 * 224, 224, 128, num_classes])
+        else: self.model = ResNet(num_classes=num_classes, softmax=False)
+
+        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=config.config_fit.lr, weight_decay=config.config_fit.weight_decay)
+        self.scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=self.optimizer, gamma=0.8)
 
         # figure out if this client has access to GPU support or not
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -59,14 +67,14 @@ class FlowerClient(fl.client.NumPyClient):
         epochs = config["local_epochs"]
 
         # a very standard looking optimiser
-        optim = torch.optim.Adam(self.model.parameters(), lr=lr, weight_decay=weight_decay)
-
+        
         # do local training. This function is identical to what you might
         # have used before in non-FL projects. For more advance FL implementation
         # you might want to tweak it but overall, from a client perspective the "local
         # training" can be seen as a form of "centralised training" given a pre-trained
         # model (i.e. the model received from the server)
-        train(self.model, self.trainloader, optim, epochs, self.device)
+        train(self.model, self.trainloader, self.optimizer, epochs, self.device)
+        self.scheduler.step()
 
         # Flower clients need to return three arguments: the updated model, the number
         # of examples in the client (although this depends a bit on your choice of aggregation
@@ -76,13 +84,13 @@ class FlowerClient(fl.client.NumPyClient):
 
     def evaluate(self, parameters: NDArrays, config: Dict[str, Scalar]):
         self.set_parameters(parameters)
-        loss, accuracy, f1, precision, recall = test(self.model, self.valloader, self.device)
+        loss, f1, precision, recall = test(self.model, self.valloader, self.device)
 
-        return float(loss), len(self.valloader), {"accuracy": accuracy, "f1": f1, "precision": precision, "recall": recall}
+        return float(loss), len(self.valloader), {"F1": f1, "Precision": precision, "Recall": recall}
 
 
 
-def generate_client_fn(trainloaders, valloaders, num_classes):
+def generate_client_fn(trainloaders, valloaders, num_classes, config):
     """Return a function that can be used by the VirtualClientEngine.
 
     to spawn a FlowerClient with client id `cid`.
@@ -99,6 +107,7 @@ def generate_client_fn(trainloaders, valloaders, num_classes):
             trainloader=trainloaders[int(cid)],
             valloader=valloaders[int(cid)],
             num_classes=num_classes,
+            config=config
         ).to_client()
 
     # return the function to spawn client
