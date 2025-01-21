@@ -5,14 +5,14 @@ import flwr as fl
 import torch
 from flwr.common import NDArrays, Scalar
 import numpy as np
-from model import Dummy_Model, test, train, ConvNeXtKAN_v1
+from model import test, train, REAL_KAN, EFF_KAN, ResNet
 
 '''This code is directly copied from the flower tutorial, see https://github.com/adap/flower/blob/main/examples/flower-simulation-step-by-step-pytorch/Part-I/client.py'''
 
 class FlowerClient(fl.client.NumPyClient):
     """Define a Flower Client."""
 
-    def __init__(self, trainloader, valloader, num_classes) -> None:
+    def __init__(self, trainloader, valloader, num_classes, config) -> None:
         super().__init__()
 
         # the dataloaders that point to the data associated to this client
@@ -20,7 +20,12 @@ class FlowerClient(fl.client.NumPyClient):
         self.valloader = valloader
 
         # a model that is randomly initialised at first
-        self.model = ConvNeXtKAN_v1(num_classes=num_classes)
+        self.model = None
+        if config.model_type == 'REAL_KAN':
+            self.model = REAL_KAN([224 * 224, 224, 128, num_classes])
+        elif config.model_type == 'EFF_KAN':
+            self.model = EFF_KAN([224 * 224, 224, 128, num_classes])
+        else: self.model = ResNet(num_classes=num_classes, softmax=False)
 
         # figure out if this client has access to GPU support or not
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -76,13 +81,13 @@ class FlowerClient(fl.client.NumPyClient):
 
     def evaluate(self, parameters: NDArrays, config: Dict[str, Scalar]):
         self.set_parameters(parameters)
-        loss, accuracy, f1, precision, recall = test(self.model, self.valloader, self.device)
+        loss, f1, precision, recall = test(self.model, self.valloader, self.device)
 
-        return float(loss), len(self.valloader), {"accuracy": accuracy, "f1": f1, "precision": precision, "recall": recall}
+        return float(loss), len(self.valloader), {"F1": f1, "Precision": precision, "Recall": recall}
 
 
 
-def generate_client_fn(trainloaders, valloaders, num_classes):
+def generate_client_fn(trainloaders, valloaders, num_classes, config):
     """Return a function that can be used by the VirtualClientEngine.
 
     to spawn a FlowerClient with client id `cid`.
@@ -99,6 +104,7 @@ def generate_client_fn(trainloaders, valloaders, num_classes):
             trainloader=trainloaders[int(cid)],
             valloader=valloaders[int(cid)],
             num_classes=num_classes,
+            config=config
         ).to_client()
 
     # return the function to spawn client
