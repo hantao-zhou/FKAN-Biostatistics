@@ -27,8 +27,8 @@ class FlowerClient(fl.client.NumPyClient):
             self.model = EFF_KAN([224 * 224, 224, 128, num_classes])
         else: self.model = ResNet(num_classes=num_classes, softmax=False)
 
-        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=config.config_fit.lr, weight_decay=config.config_fit.weight_decay)
-        self.scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=self.optimizer, gamma=0.8)
+        # self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=config.config_fit.lr, weight_decay=config.config_fit.weight_decay)
+        # self.scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=self.optimizer, gamma=0.8)
 
         # figure out if this client has access to GPU support or not
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

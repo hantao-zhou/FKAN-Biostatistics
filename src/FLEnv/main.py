@@ -14,6 +14,7 @@ from dataset import prepare_dataset
 from server import get_evaluate_fn, get_on_fit_config, weighted_average
 import numpy as np
 import random
+import pandas as pd
 
 
 def string_to_class(module_name, class_name):
@@ -124,8 +125,8 @@ def main(cfg: DictConfig):
         ),  # minimal config for the server loop telling the number of rounds in FL
         strategy=strategy,  # our strategy of choice
         client_resources={
-            "num_cpus": 8,
-            "num_gpus": 0.2,
+            "num_cpus": 10,
+            "num_gpus": 0,
         },  # (optional) controls the degree of parallelism of your simulation.
         # Lower resources per client allow for more clients to run concurrently
         # (but need to be set taking into account the compute/memory footprint of your run)
@@ -145,7 +146,38 @@ def main(cfg: DictConfig):
     # and I/O to the filesystem or data preprocessing might affect your simulation  (and tweaking `num_gpus` would not translate into speedups)
     # Finally, please note that these gpu limits are not enforced, meaning that a client can still go beyond the limit initially assigned, if
     # this happens, your might get some out-of-memory (OOM) errors.
+    # Log simulation metrics to TensorBoard and DataFrames
+    centralized_metrics_list = []
+    distributed_metrics_list = []
 
+    for metric_name, metric_values in history.metrics_centralized.items():
+        for round_number, (round_index, metric_value) in enumerate(metric_values):
+            # writer.add_scalar(f"Metrics/Centralized/{metric_name}", metric_value, round_index)
+            centralized_metrics_list.append({
+                "Round": round_index,
+                "Metric": metric_name,
+                "Value": metric_value
+            })
+
+    for metric_name, metric_values in history.metrics_distributed.items():
+        for round_number, (round_index, metric_value) in enumerate(metric_values):
+            # writer.add_scalar(f"Metrics/Distributed/{metric_name}", metric_value, round_index)
+            distributed_metrics_list.append({
+                "Round": round_index,
+                "Metric": metric_name,
+                "Value": metric_value
+            })
+
+    # Convert to DataFrame after accumulating all data
+    centralized_metrics_df = pd.DataFrame(centralized_metrics_list)
+    distributed_metrics_df = pd.DataFrame(distributed_metrics_list)
+
+    # Save metrics DataFrames to CSV files
+    centralized_metrics_path = Path(save_path) / f"{str(cfg.model_type)}_{str(cfg.strategy_config.class_name)}_centralized_metrics.csv"
+    distributed_metrics_path = Path(save_path) / f"{str(cfg.model_type)}_{str(cfg.strategy_config.class_name)}_distributed_metrics.csv"
+
+    centralized_metrics_df.to_csv(centralized_metrics_path, index=False)
+    distributed_metrics_df.to_csv(distributed_metrics_path, index=False)
     ## 6. Save your results
     # (This is one way of saving results, others are of course valid :) )
     # Now that the simulation is completed, we could save the results into the directory
