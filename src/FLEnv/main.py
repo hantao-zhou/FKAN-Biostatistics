@@ -1,5 +1,6 @@
 import warnings
 warnings.filterwarnings("ignore")
+import os
 import pickle
 from pathlib import Path
 import importlib
@@ -14,7 +15,7 @@ from dataset import prepare_dataset
 from server import get_evaluate_fn, get_on_fit_config, weighted_average
 import numpy as np
 import random
-import pandas as pd
+from model import test, EFF_KAN, REAL_KAN, ResNet
 
 
 def string_to_class(module_name, class_name):
@@ -64,8 +65,9 @@ def main(cfg: DictConfig):
     # in our config -- but you can change this!) following a independent and identically distributed (IID)
     # sampling mechanism. This is arguably the simples way of partitioning data but it's a good fit
     # for this introductory tutorial.
+    is_linear = True if cfg.model_type == 'REAL_KAN' or cfg.model_type == 'EFF_KAN' else False
     client_train_loaders, client_validation_loaders, global_valid_loader, global_test_loader = prepare_dataset(
-        cfg.num_clients, cfg.batch_size
+        cfg.num_clients, cfg.batch_size, linear=is_linear
     )
     
     '''net = ConvNeXtKAN_v1()
@@ -192,6 +194,23 @@ def main(cfg: DictConfig):
     # save the results as a python pickle
     with open(str(results_path), "wb") as h:
         pickle.dump(results, h, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def test_models():
+    models = [[ResNet(num_classes=2, softmax=False), 'ResNet'], [EFF_KAN([224 * 224, 224, 128, 2]), 'EFF_KAN'], [REAL_KAN([224 * 224, 224, 128, 2]), 'REAL_KAN']]
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    model_path = os.path.dirname(os.path.realpath(__file__))
+
+    for model, model_type in models:
+        PATH = f'{model_path}/model_dicts/{model_type}.pth'
+        is_linear = False if model_type == 'ResNet' else True
+        client_train_loaders, client_validation_loaders, global_valid_loader, global_test_loader = prepare_dataset(
+            3, 32, linear=is_linear)
+        model.load_state_dict(torch.load(PATH, weights_only=True))
+
+        loss, f1, precision, recall = test(model, global_test_loader, device)
+        print(f'Testing {model_type}')
+        print(f'Testloss: {loss}, Test F1-Score: {f1}, Test Precision: {precision}, Test Recall: {recall}')
 
 
 if __name__ == "__main__":
