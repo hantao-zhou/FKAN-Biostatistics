@@ -64,8 +64,9 @@ def main(cfg: DictConfig):
     # in our config -- but you can change this!) following a independent and identically distributed (IID)
     # sampling mechanism. This is arguably the simples way of partitioning data but it's a good fit
     # for this introductory tutorial.
+    is_linear = True if cfg.model_type == 'REAL_KAN' or cfg.model_type == 'EFF_KAN' else False
     client_train_loaders, client_validation_loaders, global_valid_loader, global_test_loader = prepare_dataset(
-        cfg.num_clients, cfg.batch_size
+        cfg.num_clients, cfg.batch_size, linear=is_linear
     )
     
     '''net = ConvNeXtKAN_v1()

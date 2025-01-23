@@ -4,13 +4,13 @@
 # it will be processed by Hydra at runtime
 
 
-model_type: REAL_KAN #EFF_KAN, ResNet， REAL_KAN
+model_type: EFF_KAN #EFF_KAN, ResNet， REAL_KAN
 strategy_config:
   module_name: flwr.server.strategy
   class_name: FedMedian
 num_rounds: 100 # number of FL rounds in the experiment
 num_clients: 3 # number of total clients available (this is also the number of partitions we need to create)
-batch_size: 4 # batch size to use by clients during training
+batch_size: 32 # batch size to use by clients during training
 num_classes: 2 # number of classes in our dataset (we use Chest-XRAY) -- this tells the model how to setup its output fully-connected layer / KAN output layer
 num_clients_per_round_fit: 3 # number of clients to involve in each fit round (fit  round = clients receive the model from the server and do local training)
 num_clients_per_round_eval: 3 # number of clients to involve in each evaluate round (evaluate round = client only evaluate the model sent by the server on their local dataset without training it)

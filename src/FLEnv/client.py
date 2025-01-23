@@ -32,6 +32,7 @@ class FlowerClient(fl.client.NumPyClient):
 
         # figure out if this client has access to GPU support or not
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("mps")
 
     def set_parameters(self, parameters):
         """Receive parameters and apply them to the local model."""
