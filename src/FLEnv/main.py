@@ -202,7 +202,7 @@ def test_models():
     model_path = os.path.dirname(os.path.realpath(__file__))
 
     for model, model_type in models:
-        PATH = f'{model_path}/model_dicts/{model_type}.pth'
+        PATH = f'{model_path}/model_dicts_bak/{model_type}.pth'
         is_linear = False if model_type == 'ResNet' else True
         client_train_loaders, client_validation_loaders, global_valid_loader, global_test_loader = prepare_dataset(
             3, 32, linear=is_linear)
@@ -214,5 +214,6 @@ def test_models():
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    test_models()
 
