@@ -126,15 +126,3 @@ def prepare_dataset(num_partitions: int, batch_size: int, train_ratio: float = 0
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, num_workers=2)
 
     return client_train_loaders, client_valid_loaders, valid_dataloader, test_dataloader
-
-
-
-
-
-
-
-
-
-
-
-

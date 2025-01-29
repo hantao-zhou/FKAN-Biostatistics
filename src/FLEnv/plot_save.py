@@ -21,7 +21,7 @@ for column in df_pivot.columns:
 # Add labels, title, and legend
 plt.xlabel('Round')
 plt.ylabel('Value')
-plt.title('Metric Values Over Rounds')
+plt.title('Performances Over Rounds')
 plt.legend()
 plt.grid(True)
 

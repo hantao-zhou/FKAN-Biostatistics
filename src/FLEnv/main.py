@@ -16,7 +16,7 @@ from server import get_evaluate_fn, get_on_fit_config, weighted_average
 import numpy as np
 import random
 from model import test, EFF_KAN, REAL_KAN, ResNet
-
+import pandas as pd
 
 def string_to_class(module_name, class_name):
     try:
@@ -105,6 +105,7 @@ def main(cfg: DictConfig):
 
     strategy_type = string_to_class(cfg.strategy_config.module_name, cfg.strategy_config.class_name)
     strategy = strategy_type(
+        proximal_mu = 0.5,
         fraction_fit=0.5,  # in simulation, since all clients are available at all times, we can just use `min_fit_clients` to control exactly how many clients we want to involve during fit
         min_fit_clients=cfg.num_clients_per_round_fit,  # number of clients to sample for fit()
         fraction_evaluate=0.5,  # similar to fraction_fit, we don't need to use this argument.
@@ -215,4 +216,5 @@ def test_models():
 
 if __name__ == "__main__":
     main()
+    # test_models()
 

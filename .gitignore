@@ -30,3 +30,6 @@ src/CNN/model_dicts
 outputs
 resnet-xray-pneumonia-classification-newdata
 src/best_model.pth
+.history
+model_dicts_bak
+model_dicts_median
