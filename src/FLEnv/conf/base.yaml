@@ -7,7 +7,7 @@
 model_type: REAL_KAN #EFF_KAN, ResNet， REAL_KAN
 strategy_config:
   module_name: flwr.server.strategy
-  class_name: FedMedian
+  class_name: FedProx
 num_rounds: 100 # number of FL rounds in the experiment
 num_clients: 3 # number of total clients available (this is also the number of partitions we need to create)
 batch_size: 32 # batch size to use by clients during training
