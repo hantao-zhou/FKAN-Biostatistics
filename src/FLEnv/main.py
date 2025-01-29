@@ -204,7 +204,7 @@ def test_models():
     for model, model_type in models:
         PATH = f'{model_path}/model_dicts/{model_type}.pth'
         is_linear = False if model_type == 'ResNet' else True
-        client_train_loaders, client_validation_loaders, global_valid_loader, global_test_loader = prepare_dataset(
+        _, _, _, global_test_loader = prepare_dataset(
             3, 32, linear=is_linear)
         model.load_state_dict(torch.load(PATH, weights_only=True))
 

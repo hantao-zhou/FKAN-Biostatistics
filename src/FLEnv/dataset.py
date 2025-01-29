@@ -36,11 +36,12 @@ class OverSampler(Sampler):
         print(f'Number of indices normal: {len(self.indices_normal)}, Number of indices pneu: {len(self.indices_pneu)}')
 
 class X_Ray_Dataset(Dataset):
-    def __init__(self, data_normal, data_pneumonia, transform):
+    def __init__(self, data_normal, data_pneumonia, transform, linear=False):
         self.data = data_normal + data_pneumonia
         self.indices_normal = np.arange(0, len(data_normal)).tolist()
         self.indices_pneumonia = np.arange(len(data_normal), len(data_pneumonia) + len(data_normal)).tolist()
         self.transform = transform
+        self.linear = linear
 
 
     def __len__(self):
@@ -51,6 +52,10 @@ class X_Ray_Dataset(Dataset):
         img = img / 255.
         img = self.transform(img)
         label = 0 if 'NORMAL' in self.data[index] else 1
+        if self.linear:
+            img = torch.flatten(img, start_dim=1)
+
+
         return img.float(), torch.tensor(label)
     
     def get_indices(self):
@@ -68,7 +73,7 @@ def get_data():
     return train_images, val_images, test_images
 
 
-def prepare_dataset(num_partitions: int, batch_size: int, train_ratio: float = 0.9):
+def prepare_dataset(num_partitions: int, batch_size: int, train_ratio: float = 0.9, linear=False):
     '''Get the full Dataset consisting of train (for training clients), val (For validating server model), test (For testing server model)'''
 
     #basic transform
@@ -99,8 +104,8 @@ def prepare_dataset(num_partitions: int, batch_size: int, train_ratio: float = 0
         normal_per_client_valid = normal_per_client[int(len(normal_per_client) * train_ratio):]
         pneumonia_per_client_valid = pneumonia_per_client[int(len(pneumonia_per_client) * train_ratio): ]
 
-        dataset_train = X_Ray_Dataset(normal_per_client_train, pneumonia_per_client_train, transform=tr)
-        dataset_valid = X_Ray_Dataset(normal_per_client_valid, pneumonia_per_client_valid, transform=tr)
+        dataset_train = X_Ray_Dataset(normal_per_client_train, pneumonia_per_client_train, transform=tr, linear=linear)
+        dataset_valid = X_Ray_Dataset(normal_per_client_valid, pneumonia_per_client_valid, transform=tr, linear=linear)
         client_train_loaders.append(DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=2))
         client_valid_loaders.append(DataLoader(dataset_valid, batch_size=batch_size, shuffle=True, num_workers=2))
         
@@ -110,14 +115,14 @@ def prepare_dataset(num_partitions: int, batch_size: int, train_ratio: float = 0
     normal_files = [os.path.join(data_dir, 'val', 'NORMAL', file) for file in normal_files]
     pneumonia_files = os.listdir(os.path.join(data_dir, 'val', val_images[0]))
     pneumonia_files = [os.path.join(data_dir, 'val', 'PNEUMONIA', file) for file in pneumonia_files]
-    valid_dataset = X_Ray_Dataset(normal_files, pneumonia_files, transform=tr)
+    valid_dataset = X_Ray_Dataset(normal_files, pneumonia_files, transform=tr, linear=linear)
     valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size, num_workers=2)
 
     normal_files = os.listdir(os.path.join(data_dir, 'test', test_images[1]))
     normal_files = [os.path.join(data_dir, 'test', 'NORMAL', file) for file in normal_files]
     pneumonia_files = os.listdir(os.path.join(data_dir, 'test', test_images[0]))
     pneumonia_files = [os.path.join(data_dir, 'test', 'PNEUMONIA', file) for file in pneumonia_files]
-    test_dataset = X_Ray_Dataset(normal_files, pneumonia_files, transform=tr)
+    test_dataset = X_Ray_Dataset(normal_files, pneumonia_files, transform=tr, linear=linear)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, num_workers=2)
 
     return client_train_loaders, client_valid_loaders, valid_dataloader, test_dataloader
