@@ -73,7 +73,7 @@ def get_data():
     return train_images, val_images, test_images
 
 
-def prepare_dataset(num_partitions: int, batch_size: int, train_ratio: float = 0.9, linear=False):
+def prepare_dataset(num_partitions: int, batch_size: int, train_ratio: float = 0.9, linear: bool = False, equal_distribution: bool = True):
     '''Get the full Dataset consisting of train (for training clients), val (For validating server model), test (For testing server model)'''
 
     #basic transform
@@ -81,35 +81,56 @@ def prepare_dataset(num_partitions: int, batch_size: int, train_ratio: float = 0
 
     #get dataset
     train_images , val_images, test_images = get_data()
-    length_normal = len(os.listdir(os.path.join(data_dir, 'train', train_images[1])))
-    len_normal_per_client = length_normal // num_partitions
+    
     normal_files = sorted(os.listdir(os.path.join(data_dir, 'train', train_images[1])), key=lambda x: int(p.findall(x)[0]))
     normal_files = [os.path.join(data_dir, 'train', 'NORMAL', file) for file in normal_files]
 
-
-    length_pneumonia = len(os.listdir(os.path.join(data_dir, 'train', train_images[0])))
-    len_pneu_per_client = length_pneumonia // num_partitions
     pneumonia_files = sorted(os.listdir(os.path.join(data_dir, 'train', train_images[0])), key=lambda x: int(p.findall(x)[0]))
     pneumonia_files = [os.path.join(data_dir, 'train', 'PNEUMONIA', file) for file in pneumonia_files]
-
+    length_normal = len(os.listdir(os.path.join(data_dir, 'train', train_images[1])))
+    length_pneumonia = len(os.listdir(os.path.join(data_dir, 'train', train_images[0])))
     client_train_loaders = []
     client_valid_loaders = []
-    for i in range(num_partitions):
-        normal_per_client = normal_files[len_normal_per_client * i: len_normal_per_client * i + len_normal_per_client]
-        pneumonia_per_client = pneumonia_files[len_pneu_per_client * i: len_pneu_per_client * i + len_pneu_per_client]
-        
-        normal_per_client_train = normal_per_client[0:int(len(normal_per_client) * train_ratio)]
-        pneumonia_per_client_train = pneumonia_per_client[0:int(len(pneumonia_per_client) * train_ratio)]
-        
-        normal_per_client_valid = normal_per_client[int(len(normal_per_client) * train_ratio):]
-        pneumonia_per_client_valid = pneumonia_per_client[int(len(pneumonia_per_client) * train_ratio): ]
+    if equal_distribution:
+        for i in range(num_partitions):
+            len_normal_per_client = length_normal // num_partitions
 
-        dataset_train = X_Ray_Dataset(normal_per_client_train, pneumonia_per_client_train, transform=tr, linear=linear)
-        dataset_valid = X_Ray_Dataset(normal_per_client_valid, pneumonia_per_client_valid, transform=tr, linear=linear)
-        client_train_loaders.append(DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=2))
-        client_valid_loaders.append(DataLoader(dataset_valid, batch_size=batch_size, shuffle=True, num_workers=2))
-        
+            len_pneu_per_client = length_pneumonia // num_partitions
 
+            normal_per_client = normal_files[len_normal_per_client * i: len_normal_per_client * i + len_normal_per_client]
+            pneumonia_per_client = pneumonia_files[len_pneu_per_client * i: len_pneu_per_client * i + len_pneu_per_client]
+            
+            normal_per_client_train = normal_per_client[0:int(len(normal_per_client) * train_ratio)]
+            pneumonia_per_client_train = pneumonia_per_client[0:int(len(pneumonia_per_client) * train_ratio)]
+            
+            normal_per_client_valid = normal_per_client[int(len(normal_per_client) * train_ratio):]
+            pneumonia_per_client_valid = pneumonia_per_client[int(len(pneumonia_per_client) * train_ratio): ]
+
+            dataset_train = X_Ray_Dataset(normal_per_client_train, pneumonia_per_client_train, transform=tr, linear=linear)
+            dataset_valid = X_Ray_Dataset(normal_per_client_valid, pneumonia_per_client_valid, transform=tr, linear=linear)
+            client_train_loaders.append(DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=2))
+            client_valid_loaders.append(DataLoader(dataset_valid, batch_size=batch_size, shuffle=True, num_workers=2))
+    else:
+        'We assume that there are equal amount of normal and pneumonia images in the dataset'
+        samples_per_client = distribute_samples(total = length_normal, num_clients=num_partitions, min_per_client=800)
+        prev = 0
+        for i in samples_per_client:
+            normal_per_client = normal_files[prev: i + prev]
+            pneumonia_per_client = pneumonia_files[prev: i + prev]
+
+            normal_per_client_train = normal_per_client[0:int(len(normal_per_client) * train_ratio)]
+            pneumonia_per_client_train = pneumonia_per_client[0:int(len(pneumonia_per_client) * train_ratio)]
+            
+            normal_per_client_valid = normal_per_client[int(len(normal_per_client) * train_ratio):]
+            pneumonia_per_client_valid = pneumonia_per_client[int(len(pneumonia_per_client) * train_ratio): ]
+            dataset_train = X_Ray_Dataset(normal_per_client_train, pneumonia_per_client_train, transform=tr, linear=linear)
+            dataset_valid = X_Ray_Dataset(normal_per_client_valid, pneumonia_per_client_valid, transform=tr, linear=linear)
+            client_train_loaders.append(DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=2))
+            client_valid_loaders.append(DataLoader(dataset_valid, batch_size=batch_size, shuffle=True, num_workers=2))
+            prev += i
+
+    for i, (train_loader, valid_loader) in enumerate(zip(client_train_loaders, client_valid_loaders)):
+        print(f'Client: {i + 1} train images: {len(train_loader.dataset)}, validation images: {len(valid_loader.dataset)}') 
 
     normal_files = os.listdir(os.path.join(data_dir, 'val', val_images[1]))
     normal_files = [os.path.join(data_dir, 'val', 'NORMAL', file) for file in normal_files]
@@ -118,11 +139,33 @@ def prepare_dataset(num_partitions: int, batch_size: int, train_ratio: float = 0
     valid_dataset = X_Ray_Dataset(normal_files, pneumonia_files, transform=tr, linear=linear)
     valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size, num_workers=2)
 
+    print(f'Global validation set images: {len(valid_dataloader.dataset)}')
+
     normal_files = os.listdir(os.path.join(data_dir, 'test', test_images[1]))
     normal_files = [os.path.join(data_dir, 'test', 'NORMAL', file) for file in normal_files]
     pneumonia_files = os.listdir(os.path.join(data_dir, 'test', test_images[0]))
     pneumonia_files = [os.path.join(data_dir, 'test', 'PNEUMONIA', file) for file in pneumonia_files]
     test_dataset = X_Ray_Dataset(normal_files, pneumonia_files, transform=tr, linear=linear)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, num_workers=2)
+    print(f'Test set images: {len(test_dataloader.dataset)}')
 
     return client_train_loaders, client_valid_loaders, valid_dataloader, test_dataloader
+
+
+
+def distribute_samples(total=7500, num_clients=3, min_per_client=1500) -> np.array:
+    remaining = total - (num_clients * min_per_client)
+    random_splits = np.random.dirichlet(np.ones(num_clients))
+    random_splits *= remaining
+    random_splits = np.round(random_splits).astype(int)  # Ensure integers
+
+    # Step 3: Add back the minimum samples, one random split might be zero
+    client_samples = random_splits + min_per_client
+
+    # Adjust in case of rounding errors, add the diff, either positive or negative, to a random client
+    while client_samples.sum() != total:
+        diff = total - client_samples.sum()
+        client_samples[np.random.choice(num_clients)] += diff
+
+    return client_samples
+

@@ -415,7 +415,7 @@ def train(net, trainloader, optimizer, epochs, device: str):
    
     for _ in range(epochs):
         p_loss = 0
-        for i, (images, labels) in enumerate(trainloader):
+        for i, (images, labels) in enumerate(tqdm(trainloader)):
             images, labels = images.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = net(images)
@@ -426,11 +426,6 @@ def train(net, trainloader, optimizer, epochs, device: str):
             #pbar.set_description(f'Loss: {(p_loss / (i + 1)):.4f}')
             
             
-
-
-
-
-
 def test(net, testloader, device: str):
     """Validate the network on the entire test set.
 
@@ -445,7 +440,7 @@ def test(net, testloader, device: str):
     predictions = []
     labels = []
     with torch.no_grad():
-        for images, label in testloader:
+        for images, label in tqdm(testloader):
             images, label = images.to(device), label.to(device)
             logits = net(images)
             prediction = F.softmax(logits, dim=1)
