@@ -10,8 +10,6 @@ import logging
 from client import generate_client_fn
 from dataset import prepare_dataset
 from server import get_evaluate_fn, get_on_fit_config, weighted_average
-from model import Dummy_Model, train, test, ConvNeXtKAN_v1
-from torch.optim import SGD, Adam
 import numpy as np
 import random
 import pandas as pd

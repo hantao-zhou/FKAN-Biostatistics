@@ -66,9 +66,10 @@ def main(cfg: DictConfig):
     # sampling mechanism. This is arguably the simples way of partitioning data but it's a good fit
     # for this introductory tutorial.
     is_linear = True if cfg.model_type == 'REAL_KAN' or cfg.model_type == 'EFF_KAN' else False
-    client_train_loaders, client_validation_loaders, global_valid_loader, global_test_loader = prepare_dataset(
-        cfg.num_clients, cfg.batch_size, linear=is_linear
+    client_train_loaders, client_validation_loaders, global_valid_loader, _ = prepare_dataset(
+        cfg.num_clients, cfg.batch_size, linear=is_linear, equal_distribution=False
     )
+    exit()
     
     '''net = ConvNeXtKAN_v1()
     client_train = client_train_loaders[0]
