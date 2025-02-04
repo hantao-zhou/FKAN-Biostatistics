@@ -69,7 +69,7 @@ def main(cfg: DictConfig):
     client_train_loaders, client_validation_loaders, global_valid_loader, _ = prepare_dataset(
         cfg.num_clients, cfg.batch_size, linear=is_linear, equal_distribution=False
     )
-    exit()
+    # exit()
     
     '''net = ConvNeXtKAN_v1()
     client_train = client_train_loaders[0]
@@ -106,7 +106,7 @@ def main(cfg: DictConfig):
 
     strategy_type = string_to_class(cfg.strategy_config.module_name, cfg.strategy_config.class_name)
     strategy = strategy_type(
-        proximal_mu = 0.5,
+        # proximal_mu = 0.5,
         fraction_fit=0.5,  # in simulation, since all clients are available at all times, we can just use `min_fit_clients` to control exactly how many clients we want to involve during fit
         min_fit_clients=cfg.num_clients_per_round_fit,  # number of clients to sample for fit()
         fraction_evaluate=0.5,  # similar to fraction_fit, we don't need to use this argument.
@@ -121,6 +121,7 @@ def main(cfg: DictConfig):
 
     ## 5. Start Simulation
     # With the dataset partitioned, the client function and the strategy ready, we can now launch the simulation!
+    print("hello")
     history = fl.simulation.start_simulation(
         client_fn=client_fn,  # a function that spawns a particular client
         num_clients=cfg.num_clients,  # total number of clients
